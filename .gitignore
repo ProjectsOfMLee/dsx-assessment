@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/
+
+# R
+.Rhistory
+.RData
+.Rproj.user/
+*.Rcheck/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+question_*.png
+
+# Pytest / Ruff
+.pytest_cache/
+.ruff_cache/
+
+# Root markdown files (assessment specs) except README
+/*.md
+!README.md
+
+# Devcontainer
+.devcontainer/
+

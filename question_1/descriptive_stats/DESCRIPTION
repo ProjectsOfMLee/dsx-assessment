@@ -1,0 +1,16 @@
+Package: descriptiveStats
+Title: Descriptive Statistics Functions for Numeric Vectors
+Version: 1.0.0
+Authors@R: 
+    person("Mingyi", "Li", email = "mingyi.li@roche.com", role = c("aut", "cre"))
+Description: Provides functions for calculating common descriptive statistics
+    including mean, median, mode, first quartile (Q1), third quartile (Q3), and
+    interquartile range (IQR). All functions handle edge cases such as empty
+    vectors, NA values, and single-element inputs with informative error messages.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3
+Suggests: 
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
