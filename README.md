@@ -9,13 +9,11 @@ dsx/
 ├── question_1/                  # R Package Development
 │   └── descriptive_stats/       # {descriptiveStats} R package
 ├── question_2_sdtm/             # SDTM DS Domain (sdtm.oak)
-├── question_3_adam/              # ADaM ADSL Dataset (admiral)
+├── question_3_adam/             # ADaM ADSL Dataset (admiral)
 ├── question_4_tlg/              # Clinical Reporting (gtsummary, ggplot2, gt)
 ├── question_5_api/              # Python FastAPI Application
-├── question_6_genai/            # GenAI Clinical Data Assistant (LangChain)
-├── QUESTION_[1-6].md            # Question specifications
-├── REQUIREMENTS.md              # Assessment requirements
-└── KNOWLEDGE_BASE.md            # Reference material
+├── question_6_genai/            # GenAI Clinical Data Assistant 
+└── README.md                    # README
 ```
 
 ## Test Summary
@@ -48,7 +46,7 @@ descriptive_stats/
 ├── R/
 │   ├── calc_mean.R          # Arithmetic mean
 │   ├── calc_median.R        # Median (handles odd/even length)
-│   ├── calc_mode.R          # Mode (supports multimodal, returns NA with message if uniform)
+│   ├── calc_mode.R          # Mode (supports multimodal and constant vectors)
 │   ├── calc_quartiles.R     # Q1 (25th percentile) and Q3 (75th percentile)
 │   ├── calc_iqr.R           # Interquartile range (Q3 - Q1)
 │   ├── utils.R              # validate_numeric_input() — shared input validation
@@ -57,9 +55,9 @@ descriptive_stats/
 ├── tests/
 │   ├── testthat.R
 │   └── testthat/
-│       ├── test-calc_mean.R      # 15 tests
+│       ├── test-calc_mean.R      # 11 tests
 │       ├── test-calc_median.R    # 12 tests
-│       ├── test-calc_mode.R      # 15 tests
+│       ├── test-calc_mode.R      # 12 tests
 │       ├── test-calc_quartiles.R # 16 tests (Q1 + Q3)
 │       └── test-calc_iqr.R      # 11 tests
 └── README.md
@@ -90,7 +88,7 @@ devtools::check("question_1/descriptive_stats")  # 0 errors, 0 warnings
 ### Key Design Decisions
 
 - **Shared validation:** `validate_numeric_input()` centralizes NA removal and type checking, keeping each function focused on its computation.
-- **Multimodal support:** `calc_mode()` returns all tied modes as a sorted vector. When all values have equal frequency, it returns `NA` with an informative message rather than an error.
+- **Multimodal support:** `calc_mode()` returns all tied modes as a sorted vector. A constant vector (e.g., `c(5,5,5)`) returns that value. When multiple distinct values all share equal frequency (e.g., `c(1,2,3)`), it returns `NA` with an informative message.
 - **Edge cases tested:** `Inf`/`NaN` propagation, integer coercion, `NULL` rejection, two-element vectors, negative values, boundary values, all-identical inputs.
 
 ---
@@ -139,6 +137,7 @@ source("question_2_sdtm/test_ds_domain.R")  # 49 tests
 
 ### Key Design Decisions
 
+- **SDTM type compliance:** `DSSTDTC` is converted from Date to character (ISO 8601) and `VISITNUM` from character to numeric, as required by SDTM variable types. Unmapped visits (UNSCHEDULED, AMBUL ECG REMOVAL) correctly produce NA VISITNUM.
 - **Three DSCAT categories** derived via `condition_add()`: PROTOCOL MILESTONE (Randomized), DISPOSITION EVENT (other coded events), OTHER EVENT (OTHERSP records with NA DSDECOD).
 - **Study day derivation** uses `derive_study_day()` with RFSTDTC from DM; Screen Failure subjects correctly get NA DSSTDY.
 - **Edge cases tested:** Screen Failure NA study days, negative DSSTDY (events before reference date), unscheduled/unmapped visits, DEATH records, DSDTC vs DSSTDTC from different raw sources.
@@ -165,7 +164,7 @@ source("question_2_sdtm/test_ds_domain.R")  # 49 tests
 | `AGEGR9` / `AGEGR9N` | Age grouping: <18 (1), 18-50 (2), >50 (3) | DM.AGE |
 | `TRTSDTM` / `TRTSTMF` | Treatment start datetime with time imputation flag "H" | EX.EXSTDTC |
 | `ITTFL` | Intent-to-treat flag: "Y" if ARM is populated | DM.ARM |
-| `ABNSBPFL` | Abnormal systolic BP flag: "Y" if any SYSBP >= 140 or < 100 mmHg | VS |
+| `ABNSBPFL` | Abnormal supine systolic BP flag: "Y" if any supine SYSBP >= 140 or < 100 mmHg | VS |
 | `LSTALVDT` | Last known alive date: max of VS, AE, DS dates | VS, AE, DS |
 | `CARPOPFL` | Cardiac population flag: "Y" if any cardiac disorder AE | AE.AESOC |
 
@@ -187,7 +186,7 @@ source("question_3_adam/test_adsl.R")  # 75 tests
 ### Key Design Decisions
 
 - **LSTALVDT** is the maximum date across three domains (VS, AE, DS), using `derive_vars_extreme_event()` with `mode = "last"`.
-- **ABNSBPFL** uses `derive_var_merged_exist_flag()` to check for any abnormal SYSBP reading per subject.
+- **ABNSBPFL** uses `derive_var_merged_exist_flag()` to check for any abnormal supine SYSBP reading per subject. Filtered to `VSPOS == "SUPINE"` to match the variable name's clinical intent — the data contains both STANDING and SUPINE measurements with different normal ranges.
 - **Screen Failure handling:** 52 subjects with ARMCD="Scrnfail" correctly get NA treatment dates, ABNSBPFL="N", and CARPOPFL=NA.
 - **Edge cases tested:** AGE=50 boundary, Screen Failure subjects, death subjects, treatment date consistency (TRTSDT <= TRTEDT), cross-variable consistency.
 
@@ -244,7 +243,7 @@ source("question_4_tlg/test_tlg.R")  # 50 tests
 ### Key Design Decisions
 
 - **Clopper-Pearson CIs** (exact binomial) used for the forest plot — appropriate for small-sample proportions in clinical trials.
-- **Denominator:** 217 unique subjects with TEAEs (not 254 safety population) for incidence calculation.
+- **Denominator:** ADSL safety population (N=86/72/96 per arm) for the summary table; 225 total ADAE subjects for the forest plot incidence calculation — matching the sample output.
 - **Edge cases tested:** CI boundary properties for n=1 and n=N, ongoing AEs (NA AEENDTC) across all arms, AEREL NA values, severity distribution sums.
 
 ---
@@ -260,7 +259,7 @@ source("question_4_tlg/test_tlg.R")  # 50 tests
 | File | Description |
 |------|-------------|
 | `app.py` | FastAPI application with 3 endpoints |
-| `test_app.py` | Test suite — 38 tests (pytest) |
+| `test_app.py` | Test suite — 39 tests (pytest) |
 | `adae.csv` | AE dataset (1191 records, 225 subjects) |
 | `requirements.txt` | Python dependencies |
 
@@ -305,8 +304,7 @@ Response:
 {
   "subject_id": "01-701-1015",
   "risk_score": 3,
-  "risk_category": "Low",
-  "ae_count": 3
+  "risk_category": "Low"
 }
 ```
 
@@ -317,13 +315,13 @@ cd question_5_api
 python -m venv .venv && . .venv/bin/activate
 pip install -r requirements.txt
 uvicorn app:app --reload          # Start server
-pytest test_app.py -v             # Run 38 tests
+pytest test_app.py -v             # Run 39 tests
 ```
 
 ### Key Design Decisions
 
 - **Pydantic models** for request/response validation with type hints.
-- **Case-insensitive** severity filtering (input uppercased before matching).
+- **Case-insensitive** filtering for both severity and treatment arm (input uppercased before matching).
 - **Sorted subject IDs** in all responses for deterministic output.
 - **Edge cases tested:** case insensitivity, combined filters (SEVERE+Placebo), boundary risk scores (0, 5, 15), empty series, unknown severity values, invalid JSON returns 422.
 
@@ -420,7 +418,7 @@ Each Python question has its own virtual environment (`.venv/`) and `requirement
 ## Running All Tests
 
 ```bash
-# Q1: R package tests (69 assertions)
+# Q1: R package tests (67 tests)
 cd question_1/descriptive_stats && Rscript -e 'devtools::test()'
 
 # Q2: SDTM tests (49 tests)
@@ -432,7 +430,7 @@ Rscript question_3_adam/test_adsl.R
 # Q4: TLG tests (50 tests)
 Rscript question_4_tlg/test_tlg.R
 
-# Q5: API tests (38 tests)
+# Q5: API tests (39 tests)
 cd question_5_api && . .venv/bin/activate && pytest test_app.py -v
 
 # Q6: GenAI tests (70 tests)
